@@ -16,8 +16,15 @@ if os.path.exists(font_list_path):
     os.remove(font_list_path)  # キャッシュ削除
 
 
-for f in fm.findSystemFonts(fontpaths=None, fontext='ttf'):
-    print(fm.FontProperties(fname=f).get_name())
+import matplotlib.font_manager as fm
+
+print("=== 使用可能なフォント一覧 ===")
+for font in fm.findSystemFonts(fontpaths=None, fontext='ttf'):
+    try:
+        print(fm.FontProperties(fname=font).get_name())
+    except:
+        continue
+print("============================")
 
 
 app = Flask(__name__)
