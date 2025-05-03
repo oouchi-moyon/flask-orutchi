@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>平均値とグラフ</title>
+</head>
+<body>
+    <h1>列の平均値</h1>
+    <ul>
+        {% for col, mean in column_means.items() %}
+        <li>{{ col }}: {{ mean }}</li>
+        {% endfor %}
+    </ul>
+    <h2>グラフ</h2>
+    <img src="data:image/png;base64,{{ img_data }}" alt="グラフ">
+</body>
+</html>
