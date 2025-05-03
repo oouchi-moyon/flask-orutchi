@@ -4,16 +4,17 @@ import matplotlib.pyplot as plt
 import io
 import base64
 import matplotlib
+import os
 
-# 日本語フォント設定
-matplotlib.rcParams['font.family'] = ['Yu Gothic', 'Meiryo', 'MS Gothic', 'Arial']
+# Render環境向け：日本語フォント設定（指定フォントがない環境への対応）
+matplotlib.rcParams['font.family'] = ['Noto Sans CJK JP', 'DejaVu Sans', 'Arial']
 
 app = Flask(__name__)
 
 @app.route('/', methods=['GET', 'POST'])
 def show_averages():
     # データ読み込み
-    df = pd.read_csv('https://kaken.odaiba.online/oouchi/data/classdat_set_test_test.csv')
+    df = pd.read_csv('http://orutchi.educpsychol.com/data/classdat_set_test_test.csv')
 
     filter_value = ''
     filtered_df = df
@@ -25,9 +26,6 @@ def show_averages():
             filtered_df = df[df.iloc[:, 3].astype(str) == filter_value]
             if filtered_df.empty:
                 no_data_found = True
-
-    # 対象列：21列目〜37列目（インデックス20〜36）
-    target_column_names = df.columns[20:37]
 
     # 日本語ラベル
     japanese_labels = [
@@ -50,7 +48,6 @@ def show_averages():
         "教師：判定不能"
     ]
 
-    # 平均値計算または初期化
     if filter_value.strip() == '' or filtered_df.empty:
         column_means = pd.Series([0.0] * len(japanese_labels), index=japanese_labels)
     else:
@@ -58,7 +55,7 @@ def show_averages():
         column_means = target_columns.mean()
         column_means.index = japanese_labels
 
-    # グラフ生成（ここから下を関数内に入れる）
+    # グラフ作成
     fig, ax = plt.subplots(figsize=(12, 8))
     ax.bar(column_means.index.astype(str), column_means.values)
     ax.set_xticklabels(column_means.index, rotation=45, ha='right', fontsize=9)
@@ -81,5 +78,7 @@ def show_averages():
         no_data_found=no_data_found
     )
 
+# Render用: 環境変数からPORT取得（Renderが割り当てる）
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
