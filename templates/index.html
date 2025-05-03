@@ -2,17 +2,41 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>平均値とグラフ</title>
+    <title>平均値の可視化</title>
 </head>
 <body>
-    <h1>列の平均値</h1>
-    <ul>
-        {% for col, mean in column_means.items() %}
-        <li>{{ col }}: {{ mean }}</li>
-        {% endfor %}
-    </ul>
-    <h2>グラフ</h2>
-    <img src="data:image/png;base64,{{ img_data }}" alt="グラフ">
+    <h1>データの絞り込みと平均値の可視化</h1>
+
+    <!-- 入力フォーム -->
+    <form method="post">
+        <label for="filter_value">フィルタ値を入力（4列目の値）:</label>
+        <input type="text" id="filter_value" name="filter_value" value="{{ request.form.get('filter_value', '') }}">
+        <input type="submit" value="送信">
+    </form>
+
+        {% if no_data_found %}
+            <p style="color: red;">データが見つかりません。</p>
+        {% endif %}
+
+
+    {% if column_means is not none %}
+        <h2>列ごとの平均値</h2>
+        <table border="1">
+            <tr>
+                <th>列名</th>
+                <th>平均値</th>
+            </tr>
+            {% for col, mean in column_means.items() %}
+            <tr>
+                <td>{{ col }}</td>
+                <td>{{ '%.3f' | format(mean) }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+
+        <h2>平均値の棒グラフ</h2>
+        <img src="data:image/png;base64,{{ img_data }}" alt="平均値グラフ">
+
+    {% endif %}
 </body>
 </html>
