@@ -4,27 +4,14 @@ import io
 import base64
 
 import matplotlib
-import matplotlib.pyplot as plt
-import matplotlib.font_manager as fm
 import os
 
-# フォントキャッシュ削除（新しいフォント認識用）
-matplotlib.rcParams['font.family'] = 'Noto Sans CJK JP'
-cache_dir = matplotlib.get_cachedir()
-font_list_path = os.path.join(cache_dir, 'fontlist-v330.json')  # matplotlibのバージョンに応じて名前は変わる
-if os.path.exists(font_list_path):
-    os.remove(font_list_path)  # キャッシュ削除
+from matplotlib import font_manager
+import matplotlib.pyplot as plt
 
-
-import matplotlib.font_manager as fm
-
-print("=== 使用可能なフォント一覧 ===")
-for font in fm.findSystemFonts(fontpaths=None, fontext='ttf'):
-    try:
-        print(fm.FontProperties(fname=font).get_name())
-    except:
-        continue
-print("============================")
+font_path = "static/fonts/NotoSansJP-Regular.ttf"
+font_prop = font_manager.FontProperties(fname=font_path)
+plt.rcParams['font.family'] = font_prop.get_name()
 
 
 app = Flask(__name__)
