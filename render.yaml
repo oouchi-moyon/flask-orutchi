@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: flask-graph-app
+    env: python
+    buildCommand: |
+      apt-get update && \
+      apt-get install -y fonts-noto-cjk && \
+      pip install -r requirements.txt
+    startCommand: python app.py
