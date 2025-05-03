@@ -1,13 +1,24 @@
 from flask import Flask, render_template, request
 import pandas as pd
-import matplotlib.pyplot as plt
 import io
 import base64
+
 import matplotlib
+import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
 import os
 
-# Render環境向け：日本語フォント設定（指定フォントがない環境への対応）
-matplotlib.rcParams['font.family'] = ['Noto Sans CJK JP', 'DejaVu Sans', 'Arial']
+# フォントキャッシュ削除（新しいフォント認識用）
+matplotlib.rcParams['font.family'] = 'Noto Sans CJK JP'
+cache_dir = matplotlib.get_cachedir()
+font_list_path = os.path.join(cache_dir, 'fontlist-v330.json')  # matplotlibのバージョンに応じて名前は変わる
+if os.path.exists(font_list_path):
+    os.remove(font_list_path)  # キャッシュ削除
+
+
+for f in fm.findSystemFonts(fontpaths=None, fontext='ttf'):
+    print(fm.FontProperties(fname=f).get_name())
+
 
 app = Flask(__name__)
 
