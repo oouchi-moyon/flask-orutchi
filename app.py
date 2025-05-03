@@ -1,20 +1,22 @@
 from flask import Flask, render_template, request
 import pandas as pd
+import matplotlib.pyplot as plt
 import io
 import base64
-
 import matplotlib
+import matplotlib.font_manager as fm
 import os
 
-from matplotlib import font_manager
-import matplotlib.pyplot as plt
-
-font_path = "static/fonts/NotoSansJP-Regular.ttf"
-font_prop = font_manager.FontProperties(fname=font_path)
-plt.rcParams['font.family'] = font_prop.get_name()
-
-
+# Flask アプリケーションの初期化
 app = Flask(__name__)
+
+# ===== フォント設定（NotoSansJP）=====
+font_path = os.path.join('static', 'fonts', 'NotoSansJP-Regular.ttf')
+if os.path.exists(font_path):
+    font_prop = fm.FontProperties(fname=font_path)
+    matplotlib.rcParams['font.family'] = font_prop.get_name()
+else:
+    print(f"フォントファイルが見つかりません: {font_path}")
 
 @app.route('/', methods=['GET', 'POST'])
 def show_averages():
@@ -31,6 +33,9 @@ def show_averages():
             filtered_df = df[df.iloc[:, 3].astype(str) == filter_value]
             if filtered_df.empty:
                 no_data_found = True
+
+    # 対象列（21列目〜37列目）
+    target_column_names = df.columns[20:37]
 
     # 日本語ラベル
     japanese_labels = [
@@ -53,6 +58,7 @@ def show_averages():
         "教師：判定不能"
     ]
 
+    # 平均値の算出 or 初期化
     if filter_value.strip() == '' or filtered_df.empty:
         column_means = pd.Series([0.0] * len(japanese_labels), index=japanese_labels)
     else:
@@ -60,9 +66,10 @@ def show_averages():
         column_means = target_columns.mean()
         column_means.index = japanese_labels
 
-    # グラフ作成
+    # グラフの生成
     fig, ax = plt.subplots(figsize=(12, 8))
-    ax.bar(column_means.index.astype(str), column_means.values)
+    ax.bar(column_means.index, column_means.values)
+    ax.set_xticks(range(len(column_means)))
     ax.set_xticklabels(column_means.index, rotation=45, ha='right', fontsize=9)
     ax.set_ylim(0, 1)
     ax.set_xlabel('行動カテゴリ')
@@ -70,6 +77,7 @@ def show_averages():
     ax.set_title('平均値の棒グラフ')
     plt.tight_layout()
 
+    # 画像データをbase64に変換
     img = io.BytesIO()
     plt.savefig(img, format='png')
     img.seek(0)
