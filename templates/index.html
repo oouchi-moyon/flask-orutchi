@@ -1,42 +1,109 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <title>平均値の可視化</title>
+  <meta charset="UTF-8">
+  <title>CSVファイル検索と授業コード選択</title>
 </head>
 <body>
-    <h1>データの絞り込みと平均値の可視化</h1>
+  <h1>CSVファイル検索</h1>
 
-    <!-- 入力フォーム -->
-    <form method="post">
-        <label for="filter_value">フィルタ値を入力（4列目の値）:</label>
-        <input type="text" id="filter_value" name="filter_value" value="{{ request.form.get('filter_value', '') }}">
-        <input type="submit" value="送信">
-    </form>
+  <form method="POST">
+    <label>変数A: <input type="text" name="var_a" value="{{ var_a }}" required></label><br>
+    <label>変数B: <input type="text" name="var_b" value="{{ var_b }}" required></label><br>
+    <button type="submit" name="action" value="search">検索</button><br><br>
 
-        {% if no_data_found %}
-            <p style="color: red;">データが見つかりません。</p>
-        {% endif %}
-
-
-    {% if column_means is not none %}
-        <h2>列ごとの平均値</h2>
-        <table border="1">
-            <tr>
-                <th>列名</th>
-                <th>平均値</th>
-            </tr>
-            {% for col, mean in column_means.items() %}
-            <tr>
-                <td>{{ col }}</td>
-                <td>{{ '%.3f' | format(mean) }}</td>
-            </tr>
-            {% endfor %}
-        </table>
-
-        <h2>平均値の棒グラフ</h2>
-        <img src="data:image/png;base64,{{ img_data }}" alt="平均値グラフ">
-
+    {% if course_codes %}
+      <label>授業コード:
+        <select name="var_c">
+          <option value="">-- 選択してください --</option>
+          {% for code in course_codes %}
+            <option value="{{ code }}" {% if code == selected_code %}selected{% endif %}>{{ code }}</option>
+          {% endfor %}
+        </select>
+      </label><br>
+      <button type="submit" name="action" value="select">選択</button><br><br>
     {% endif %}
+  </form>
+
+  {% if error %}
+    <p style="color:red;">{{ error }}</p>
+  {% endif %}
+
+  {% if message %}
+    <p>{{ message }}</p>
+  {% endif %}
+
+  {% if detail_data %}
+    <h2>詳細データ</h2>
+    <ul>
+      {% for line in detail_data %}
+        <li>{{ line }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  {% if grid_data %}
+    <h2>座席表（49マス）</h2>
+    <table border="1">
+      {% for row in grid_data %}
+        <tr>
+          {% for cell in row %}
+            <td style="text-align: center; padding: 5px; {{ cell.style }}">{{ cell.text }}</td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </table>
+    <p style="color:red;">赤字は観察データなし</p>
+    <h3>空席: {{ empty_list | join(", ") }}</h3>
+    <h3>欠席: {{ absent_list | join(", ") }}</h3>
+    <h3>観察データなし: {{ no_obs_list | join(", ") }}</h3>
+  {% endif %}
+
+  {% if table_options %}
+    <form method="POST">
+      <label>表示する表を選択:
+        <select name="selected_table" required>
+          <option value="">-- 選択してください --</option>
+          {% for option in table_options %}
+            <option value="{{ option }}" {% if option == selected_table %}selected{% endif %}>{{ option }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <input type="hidden" name="var_a" value="{{ var_a }}">
+      <input type="hidden" name="var_b" value="{{ var_b }}">
+      <input type="hidden" name="var_c" value="{{ selected_code }}">
+      <button type="submit" name="action" value="show_table">表を表示</button>
+    </form>
+  {% endif %}
+
+  {% if observation_table is not none %}
+    <h2>選択されたデータの表示</h2>
+    <table border="1">
+      <thead>
+        <tr>
+          {% for col in observation_table.columns %}
+            <th>{{ col }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in observation_table.values %}
+          <tr>
+            {% for val in row %}
+              <td>{{ val }}</td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <form method="GET" action="/download/xlsx">
+      <button type="submit">Excel形式でダウンロード</button>
+    </form>
+    <form method="GET" action="/download/html">
+      <button type="submit">HTML形式でダウンロード</button>
+    </form>
+  {% endif %}
+
 </body>
 </html>

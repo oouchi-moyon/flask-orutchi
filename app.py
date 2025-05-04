@@ -1,97 +1,224 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, send_file
 import pandas as pd
-import matplotlib.pyplot as plt
-import io
-import base64
-import matplotlib
-import matplotlib.font_manager as fm
+import requests
+from io import BytesIO, StringIO
+import chardet
+import tempfile
 import os
 
-# Flask アプリケーションの初期化
 app = Flask(__name__)
+BASE_URL = "http://orutchi.educpsychol.com/data"
+observation_table_global = None
 
-# ===== フォント設定（NotoSansJP）=====
-font_path = os.path.join('static', 'fonts', 'NotoSansJP-Regular.ttf')
-if os.path.exists(font_path):
-    font_prop = fm.FontProperties(fname=font_path)
-    matplotlib.rcParams['font.family'] = font_prop.get_name()
-else:
-    print(f"フォントファイルが見つかりません: {font_path}")
 
-@app.route('/', methods=['GET', 'POST'])
-def show_averages():
-    # データ読み込み
-    df = pd.read_csv('http://orutchi.educpsychol.com/data/classdat_set_test_test.csv')
+def read_csv_with_encoding_auto(response_content):
+    result = chardet.detect(response_content)
+    encoding = result['encoding']
+    return pd.read_csv(StringIO(response_content.decode(encoding)), header=None)
 
-    filter_value = ''
-    filtered_df = df
-    no_data_found = False
 
-    if request.method == 'POST':
-        filter_value = request.form.get('filter_value', '')
-        if filter_value.strip() != '':
-            filtered_df = df[df.iloc[:, 3].astype(str) == filter_value]
-            if filtered_df.empty:
-                no_data_found = True
+def create_display_grid(df):
+    grid = []
+    total_cols = df.shape[1]
+    empty_list = []
+    absent_list = []
+    no_obs_list = []
 
-    # 対象列（21列目〜37列目）
-    target_column_names = df.columns[20:37]
+    for i in range(7):
+        row = []
+        for j in range(7):
+            num = i * 7 + j + 1
+            if num > 49:
+                row.append({"text": "", "style": ""})
+                continue
+            if num == 49:
+                row.append({"text": "教師", "style": ""})
+                continue
+            col_index = num + 10
+            if col_index >= total_cols:
+                row.append({"text": "", "style": ""})
+                continue
+            values = df.iloc[:, col_index].dropna().astype(str).map(lambda x: x.strip())
+            if all(v == "N" for v in values):
+                empty_list.append(str(num))
+                row.append({"text": "空", "style": ""})
+            elif all(v == "A" for v in values):
+                absent_list.append(str(num))
+                row.append({"text": "欠", "style": ""})
+            elif all(v == "0" for v in values):
+                no_obs_list.append(str(num))
+                row.append({"text": str(num), "style": "color:red;"})
+            else:
+                row.append({"text": str(num), "style": ""})
+        grid.append(row)
 
-    # 日本語ラベル
-    japanese_labels = [
-        "児童：教師と授業内容に関係した相互交渉をする",
-        "児童：教師と授業内容とは関係のない相互交渉をする",
-        "児童：教師や他児の話を聞く",
-        "児童：教室全体に影響する程度に授業を妨げる",
-        "児童：他児と授業内容に関係した相互交渉をする",
-        "児童：他児と授業内容に関係しない相互交渉をする",
-        "児童：一人で他者の話を聞く以外の学習活動を行う",
-        "児童：対象児が一人で学習活動以外の行動をとる",
-        "児童：判定不能",
-        "教師：児童の不適切な行動や授業規律の維持への対応をする",
-        "教師：授業内容の説明や例示をする",
-        "教師：児童との授業内容に関連した相互交渉をする",
-        "教師：児童がとるべき行動の指示をする",
-        "教師：説明をともなわない板書をする",
-        "教師：机間巡視，机間指導，グループに対する指導をする",
-        "教師：学習活動の準備をする",
-        "教師：判定不能"
-    ]
+    return grid, empty_list, absent_list, no_obs_list
 
-    # 平均値の算出 or 初期化
-    if filter_value.strip() == '' or filtered_df.empty:
-        column_means = pd.Series([0.0] * len(japanese_labels), index=japanese_labels)
-    else:
-        target_columns = filtered_df.iloc[:, 20:37]
-        column_means = target_columns.mean()
-        column_means.index = japanese_labels
 
-    # グラフの生成
-    fig, ax = plt.subplots(figsize=(12, 8))
-    ax.bar(column_means.index, column_means.values)
-    ax.set_xticks(range(len(column_means)))
-    ax.set_xticklabels(column_means.index, rotation=45, ha='right', fontsize=9)
-    ax.set_ylim(0, 1)
-    ax.set_xlabel('行動カテゴリ')
-    ax.set_ylabel('平均値')
-    ax.set_title('平均値の棒グラフ')
-    plt.tight_layout()
+@app.route("/", methods=["GET", "POST"])
+def index():
+    global observation_table_global
+    df = None
+    filtered_df = None
+    error = None
+    message = None
+    course_codes = []
+    selected_code = None
+    detail_data = []
+    grid_data = []
+    var_a = var_b = ""
+    table_options = []
+    selected_table = ""
+    empty_list = []
+    absent_list = []
+    no_obs_list = []
+    observation_table = None
 
-    # 画像データをbase64に変換
-    img = io.BytesIO()
-    plt.savefig(img, format='png')
-    img.seek(0)
-    img_b64 = base64.b64encode(img.getvalue()).decode('utf-8')
-    img.close()
+    if request.method == "POST":
+        var_a = request.form.get("var_a", "")
+        var_b = request.form.get("var_b", "")
+        selected_code = request.form.get("var_c", "")
+        selected_table = request.form.get("selected_table", "")
+        action = request.form.get("action")
+
+        if action == "search" and var_a and var_b:
+            filename = f"SCTdat_set_{var_a}_{var_b}.csv"
+            file_url = f"{BASE_URL}/{filename}"
+            try:
+                response = requests.get(file_url)
+                response.raise_for_status()
+                df = read_csv_with_encoding_auto(response.content)
+                message = f"{filename} が見つかりました。"
+                course_codes = df.iloc[:, 4].dropna().unique().tolist()
+            except Exception as e:
+                error = f"エラー: {e}"
+
+        elif action in ["select", "show_table"] and var_a and var_b:
+            filename = f"SCTdat_set_{var_a}_{var_b}.csv"
+            file_url = f"{BASE_URL}/{filename}"
+            try:
+                response = requests.get(file_url)
+                response.raise_for_status()
+                df = read_csv_with_encoding_auto(response.content)
+                course_codes = df.iloc[:, 4].dropna().unique().tolist()
+                filtered_df = df[df.iloc[:, 4] == selected_code]
+
+                if len(filtered_df) < 2:
+                    error = "観察データが2以上でないと表示できません"
+                    filtered_df = None
+                else:
+                    filtered_df = filtered_df.iloc[1:].reset_index(drop=True)
+                    linked_filename = df.iloc[0, 2]
+                    detail_url = f"{BASE_URL}/{linked_filename}.csv"
+                    detail_response = requests.get(detail_url)
+                    detail_response.raise_for_status()
+                    detail_df = read_csv_with_encoding_auto(detail_response.content)
+                    detail_data = [f"C{i+1}: {detail_df.iloc[i, 0]}" for i in range(min(12, len(detail_df)))]
+                    grid_data, empty_list, absent_list, no_obs_list = create_display_grid(filtered_df)
+
+                    valid_numbers = []
+                    for i in range(1, 49):
+                        if str(i) not in empty_list + absent_list + no_obs_list:
+                            valid_numbers.append(f"S{i}")
+                    if "49" not in empty_list + absent_list + no_obs_list:
+                        valid_numbers.append("教師")
+                    table_options = valid_numbers + [f"C{i}" for i in range(1, 13)] + ["summary"]
+
+                    if action == "show_table" and selected_table:
+                        if selected_table.startswith("S") or selected_table == "教師":
+                            seat_number = 49 if selected_table == "教師" else int(selected_table[1:])
+                            col_index = 10 + seat_number
+                            display_rows = filtered_df.iloc[:, [5, 6, col_index] + list(range(60, 72))].copy()
+                            label = "教師" if selected_table == "教師" else selected_table
+                            display_rows.columns = ["観察開始時刻", "観察終了時刻", label] + [f"C{i}" for i in range(1, 13)]
+                            for idx, row in display_rows.iterrows():
+                                if row[label] == 0:
+                                    for c in display_rows.columns[3:]:
+                                        display_rows.at[idx, c] = "."
+                            sums = display_rows.iloc[:, 2:].apply(pd.to_numeric, errors='coerce').sum(skipna=True)
+                            counts = display_rows.iloc[:, 2:].apply(lambda col: col.apply(lambda x: 1 if x in [0, 1] else 0)).sum()
+                            percents = sums / counts * 100
+                            sum_row = ["", "sum"] + [int(s) if not pd.isna(s) else "" for s in sums.tolist()]
+                            percent_row = ["", "%"] + [f"{p:.1f}%" if c > 0 else "-" for p, c in zip(percents, counts)]
+                            display_rows.loc[len(display_rows)] = sum_row
+                            display_rows.loc[len(display_rows)] = percent_row
+                            observation_table = display_rows
+
+                        elif selected_table.startswith("C"):
+                            c_index = 60 + int(selected_table[1:]) - 1
+                            seat_cols = [10 + int(i) for i in range(49) if str(i+1) not in empty_list + absent_list + no_obs_list]
+                            display_cols = [5, 6, c_index] + seat_cols
+                            display_rows = filtered_df.iloc[:, display_cols].copy()
+                            seat_labels = ["教師" if i == 48 else f"S{i+1}" for i in range(49) if str(i+1) not in empty_list + absent_list + no_obs_list]
+                            display_rows.columns = ["観察開始時刻", "観察終了時刻", selected_table] + seat_labels
+                            for idx, row in display_rows.iterrows():
+                                if row[selected_table] == 0:
+                                    for s in seat_labels:
+                                        display_rows.at[idx, s] = "."
+                            sums = display_rows.iloc[:, 2:].apply(pd.to_numeric, errors='coerce').sum(skipna=True)
+                            counts = display_rows.iloc[:, 2:].apply(lambda col: col.apply(lambda x: 1 if x in [0, 1] else 0)).sum()
+                            percents = sums / counts * 100
+                            sum_row = ["", "sum"] + [int(s) if not pd.isna(s) else "" for s in sums.tolist()]
+                            percent_row = ["", "%"] + [f"{p:.1f}%" if c > 0 else "-" for p, c in zip(percents, counts)]
+                            display_rows.loc[len(display_rows)] = sum_row
+                            display_rows.loc[len(display_rows)] = percent_row
+                            observation_table = display_rows
+
+                        elif selected_table == "summary":
+                            display_rows = filtered_df.iloc[:, [5, 6] + list(range(60, 72))].copy()
+                            display_rows.columns = ["観察開始時刻", "観察終了時刻"] + [f"C{i}" for i in range(1, 13)]
+                            sums = display_rows.iloc[:, 2:].apply(pd.to_numeric, errors='coerce').sum(skipna=True)
+                            counts = display_rows.iloc[:, 2:].apply(lambda col: col.apply(lambda x: 1 if x in [0, 1] else 0)).sum()
+                            percents = sums / counts * 100
+                            sum_row = ["", "sum"] + [int(s) if not pd.isna(s) else "" for s in sums.tolist()]
+                            percent_row = ["", "%"] + [f"{p:.1f}%" if c > 0 else "-" for p, c in zip(percents, counts)]
+                            display_rows.loc[len(display_rows)] = sum_row
+                            display_rows.loc[len(display_rows)] = percent_row
+                            observation_table = display_rows
+
+                        observation_table_global = observation_table
+
+            except Exception as e:
+                error = f"エラー: {e}"
 
     return render_template(
-        'index.html',
-        column_means=column_means,
-        img_data=img_b64,
-        no_data_found=no_data_found
+        "index.html",
+        error=error,
+        message=message,
+        course_codes=course_codes,
+        selected_code=selected_code,
+        detail_data=detail_data,
+        grid_data=grid_data,
+        empty_list=empty_list or ["なし"],
+        absent_list=absent_list or ["なし"],
+        no_obs_list=no_obs_list or ["なし"],
+        table_options=table_options,
+        selected_table=selected_table,
+        var_a=var_a,
+        var_b=var_b,
+        observation_table=observation_table
     )
 
-# Render用: 環境変数からPORT取得（Renderが割り当てる）
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+
+@app.route("/download/xlsx")
+def download_xlsx():
+    global observation_table_global
+    if observation_table_global is None:
+        return "No data to download"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
+        observation_table_global.to_excel(tmp.name, index=False)
+        return send_file(tmp.name, as_attachment=True, download_name="table.xlsx")
+
+
+@app.route("/download/html")
+def download_html():
+    global observation_table_global
+    if observation_table_global is None:
+        return "No data to download"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp:
+        observation_table_global.to_html(tmp.name, index=False)
+        return send_file(tmp.name, as_attachment=True, download_name="table.html")
+
+
+#if __name__ == "__main__":
+#    app.run(debug=True)

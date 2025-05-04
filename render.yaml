@@ -2,6 +2,7 @@ services:
   - type: web
     name: flask-japanese-graph-app
     env: python
+    buildCommand: ""
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app
     envVars:
