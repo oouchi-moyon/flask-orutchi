@@ -131,6 +131,10 @@ def index():
                             display_rows = filtered_df.iloc[:, [5, 6, col_index] + list(range(60, 72))].copy()
                             label = "教師" if selected_table == "教師" else selected_table
                             display_rows.columns = ["観察開始時刻", "観察終了時刻", label] + [f"C{i}" for i in range(1, 13)]
+
+                            for c in display_rows.columns[3:]:
+                                display_rows[c] = display_rows[c].astype("object")
+
                             for idx, row in display_rows.iterrows():
                                 if row[label] == 0:
                                     for c in display_rows.columns[3:]:
@@ -151,6 +155,10 @@ def index():
                             display_rows = filtered_df.iloc[:, display_cols].copy()
                             seat_labels = ["教師" if i == 48 else f"S{i+1}" for i in range(49) if str(i+1) not in empty_list + absent_list + no_obs_list]
                             display_rows.columns = ["観察開始時刻", "観察終了時刻", selected_table] + seat_labels
+
+                            for s in seat_labels:
+                                display_rows[s] = display_rows[s].astype("object")
+
                             for idx, row in display_rows.iterrows():
                                 if row[selected_table] == 0:
                                     for s in seat_labels:
