@@ -3,20 +3,37 @@
 <head>
   <meta charset="UTF-8">
   <title>授業観察データ出力</title>
+<style>
+table.fixed-seat {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 350px;  /* 7列 × 50px = 350px */
+}
+table.fixed-seat td {
+  width: 50px;
+  height: 50px;
+  border: 1px solid #888;
+  text-align: center;
+  vertical-align: middle;
+  font-size: 12px;
+  word-break: break-word;
+  overflow: hidden;
+}
+</style>
 </head>
 <body>
   <p style="font-size: 18px; font-weight: bold;">
   <img src="https://lab.educpsychol.com/wp-content/uploads/2025/06/ORUCHI_Logo.png" alt="アイコン" style="width:150px; vertical-align:middle; margin-right:10px;">
   授業観察データ出力
 </p>
-	<h2>観察者IDと観察年月日の入力</h2?
+	<h4>観察者IDと観察年月日の入力</h4>
   <form method="POST">
     <label>観察者ID: <input type="text" name="var_a" value="{{ var_a }}" required></label><br>
     <label>観察年月日（YYYYMMDD）: <input type="text" name="var_b" value="{{ var_b }}" required></label><br>
     <button type="submit" name="action" value="search">次へ</button><br><br>
 
     {% if course_codes %}
-		<h2>授業コード選択</h2><br>
+		<h4>授業コード選択</h4><br>
       <label>授業コード:
         <select name="var_c">
           <option value="">-- 選択してください --</option>
@@ -38,7 +55,7 @@
   {% endif %}
 
   {% if detail_data %}
-    <h2>観察カテゴリ一覧</h2>
+    <h4>観察カテゴリ一覧</h4>
     <ul>
       {% for line in detail_data %}
         <li>{{ line }}</li>
@@ -47,16 +64,16 @@
   {% endif %}
 
   {% if grid_data %}
-    <h2>座席表（49マス）</h2>
-    <table border="1">
-      {% for row in grid_data %}
-        <tr>
-          {% for cell in row %}
-            <td style="text-align: center; padding: 5px; {{ cell.style }}">{{ cell.text }}</td>
-          {% endfor %}
-        </tr>
+    <h4>座席表（49マス）</h4>
+<table class="fixed-seat">
+  {% for row in grid_data %}
+    <tr>
+      {% for cell in row %}
+        <td style="{{ cell.style }}">{{ cell.text }}</td>
       {% endfor %}
-    </table>
+    </tr>
+  {% endfor %}
+</table>
     <p style="color:red;">赤字は観察データなし</p>
   {% endif %}
 
@@ -82,7 +99,7 @@
   {% endif %}
 
   {% if observation_table is not none %}
-    <h2>出力データの表示</h2>
+    <h4>出力データの表示</h4>
     <table border="1">
       <thead>
         <tr>
@@ -101,7 +118,7 @@
         {% endfor %}
       </tbody>
     </table>
-    <h2>出力データのダウンロード</h2>
+    <h4>出力データのダウンロード</h4>
     <form method="GET" action="/download/xlsx">
       <button type="submit">Excel形式でダウンロード</button>
     </form>
