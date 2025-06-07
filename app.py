@@ -60,20 +60,20 @@ def create_display_grid(df):
 
     return grid, empty_list, absent_list, no_obs_list
 
+def remove_bom(s):
+    return s.replace('\ufeff', '').strip()
+
 @app.route('/', methods=['GET', 'POST'])
 def login():
     error = None
-    if request.method == "POST" and 'user_id' in request.form and 'password' in request.form:
-        user_id = request.form.get("user_id", "").strip()
-        password = request.form.get("password", "").strip()
+    if request.method == "POST":
+        user_id = remove_bom(request.form.get("user_id", ""))
+        password = remove_bom(request.form.get("password", ""))
 
         try:
             df_check = pd.read_csv(BASE_URL + "check.csv", dtype=str, encoding='utf-8-sig')
-
-            # 空白除去（念のため）
-            df_check.iloc[:, 0] = df_check.iloc[:, 0].str.strip()
-            df_check.iloc[:, 1] = df_check.iloc[:, 1].str.strip()
-
+            df_check.iloc[:, 0] = df_check.iloc[:, 0].apply(remove_bom)
+            df_check.iloc[:, 1] = df_check.iloc[:, 1].apply(remove_bom)
         except Exception as e:
             error = f"認証データの読み込みに失敗しました: {e}"
             return render_template('login.html', error=error)
@@ -83,9 +83,9 @@ def login():
             return redirect(url_for('index'))
         else:
             error = 'IDまたはパスワードが正しくありません。'
-            return render_template('login.html', error=error)
 
     return render_template('login.html', error=error)
+
 
 @app.route('/index', methods=['GET', 'POST'])
 def index():
