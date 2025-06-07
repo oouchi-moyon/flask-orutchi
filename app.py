@@ -110,6 +110,11 @@ def index():
         selected_table = request.form.get("selected_table", "")
         action = request.form.get("action")
 
+        session['ver_a'] = var_a
+        session['ver_b'] = var_b
+        session['ver_c'] = selected_code
+        session['selected_table'] = selected_table
+
         if action == "search" and var_a and var_b:
             filename = f"SCTdat_set_{var_a}_{var_b}.csv"
             file_url = f"{BASE_URL}/{filename}"
@@ -233,40 +238,40 @@ def index():
         selected_table=selected_table,
         var_a=var_a,
         var_b=var_b,
-        observation_table=observation_table
+        observation_table=observation_table,
+        scroll_to_table = (request.method == "POST" and request.form.get("action") == "show_table" and observation_table is not None)
     )
 
 @app.route("/download/xlsx")
 def download_xlsx():
     global observation_table_global
     if observation_table_global is None:
-        return "No data to download", 400  # ← ステータスコード付きで明示的に返す
+        return "No data to download"
+    ver_a = session.get('ver_a', 'unknown')
+    ver_b = session.get('ver_b', 'unknown')
+    ver_c = session.get('ver_c', 'unknown')
+    selected_table = session.get('selected_table', 'unknown')
+    filename = f"table_{ver_a}_{ver_b}_{ver_c}_{selected_table}.xlsx"
 
-    try:
-        # 一時ファイルを手動で管理して削除しないようにする
-        temp_path = os.path.join(tempfile.gettempdir(), "observation_table.xlsx")
-        observation_table_global.to_excel(temp_path, index=False)
-        return send_file(temp_path, as_attachment=True, download_name="table.xlsx")
-    except Exception as e:
-        return f"エラーが発生しました: {str(e)}", 500
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
+        observation_table_global.to_excel(tmp.name, index=False)
+        return send_file(tmp.name, as_attachment=True, download_name=filename)
 
 @app.route("/download/html")
 def download_html():
     global observation_table_global
     if observation_table_global is None:
-        return "No data to download", 400
+        return "No data to download"
+    ver_a = session.get('ver_a', 'unknown')
+    ver_b = session.get('ver_b', 'unknown')
+    ver_c = session.get('ver_c', 'unknown')
+    selected_table = session.get('selected_table', 'unknown')
+    filename = f"table_{ver_a}_{ver_b}_{ver_c}_{selected_table}.html"
 
-    output = BytesIO()
-    html_string = observation_table_global.to_html(index=False)
-    output.write(html_string.encode('utf-8'))
-    output.seek(0)
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp:
+        observation_table_global.to_html(tmp.name, index=False)
+        return send_file(tmp.name, as_attachment=True, download_name=filename)
 
-    return send_file(
-        output,
-        as_attachment=True,
-        download_name="table.html",
-        mimetype="text/html"
-    )
 
 #if __name__ == "__main__":
 #    app.run(debug=True)

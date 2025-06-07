@@ -105,5 +105,14 @@
     </form>
   {% endif %}
 
+<script>
+window.onload = function() {
+    {% if scroll_to_table %}
+    const el = document.getElementById("table-form");
+    if(el) el.scrollIntoView({ behavior: 'smooth' });
+    {% endif %}
+};
+</script>
+
 </body>
 </html>
