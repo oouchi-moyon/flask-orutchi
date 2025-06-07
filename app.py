@@ -7,6 +7,10 @@ import tempfile
 import os
 
 app = Flask(__name__)
+
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['SESSION_COOKIE_SECURE'] = True  # HTTPS前提の環境（Renderなど）
+
 app.secret_key = 'your_secret_key'
 
 BASE_URL = "http://orutchi.educpsychol.com/data/"
@@ -236,20 +240,37 @@ def index():
 def download_xlsx():
     global observation_table_global
     if observation_table_global is None:
-        return "No data to download"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
-        observation_table_global.to_excel(tmp.name, index=False)
-        return send_file(tmp.name, as_attachment=True, download_name="table.xlsx")
+        return "No data to download", 400
 
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        observation_table_global.to_excel(writer, index=False)
+    output.seek(0)
+
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name="table.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
 @app.route("/download/html")
 def download_html():
     global observation_table_global
     if observation_table_global is None:
-        return "No data to download"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp:
-        observation_table_global.to_html(tmp.name, index=False)
-        return send_file(tmp.name, as_attachment=True, download_name="table.html")
+        return "No data to download", 400
+
+    output = BytesIO()
+    html_string = observation_table_global.to_html(index=False)
+    output.write(html_string.encode('utf-8'))
+    output.seek(0)
+
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name="table.html",
+        mimetype="text/html"
+    )
 
 #if __name__ == "__main__":
 #    app.run(debug=True)
