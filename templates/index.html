@@ -5,14 +5,18 @@
   <title>授業観察データ出力</title>
 </head>
 <body>
-  <h1>授業観察データ出力</h1>
-
+  <p style="font-size: 18px; font-weight: bold;">
+  <img src="https://lab.educpsychol.com/wp-content/uploads/2025/06/ORUCHI_Logo.png" alt="アイコン" style="width:150px; vertical-align:middle; margin-right:10px;">
+  授業観察データ出力
+</p>
   <form method="POST">
+	<h2>１．観察者IDと観察年月日の入力</h2?
     <label>観察者ID: <input type="text" name="var_a" value="{{ var_a }}" required></label><br>
-    <label>観察日（8桁の数値）: <input type="text" name="var_b" value="{{ var_b }}" required></label><br>
-    <button type="submit" name="action" value="search">検索</button><br><br>
+    <label>観察年月日（YYYYMMDD）: <input type="text" name="var_b" value="{{ var_b }}" required></label><br>
+    <button type="submit" name="action" value="search">次へ</button><br><br>
 
     {% if course_codes %}
+		<h2>２．授業コード選択</h2>
       <label>授業コード:
         <select name="var_c">
           <option value="">-- 選択してください --</option>
@@ -34,7 +38,7 @@
   {% endif %}
 
   {% if detail_data %}
-    <h2>観察カテゴリ名</h2>
+    <h2>観察カテゴリ一覧</h2>
     <ul>
       {% for line in detail_data %}
         <li>{{ line }}</li>
@@ -54,14 +58,11 @@
       {% endfor %}
     </table>
     <p style="color:red;">赤字は観察データなし</p>
-<!--    <h3>空席: {{ empty_list | join(", ") }}</h3>-->
-<!--    <h3>欠席: {{ absent_list | join(", ") }}</h3>-->
-<!--    <h3>観察データなし: {{ no_obs_list | join(", ") }}</h3>-->
   {% endif %}
 
   {% if table_options %}
     <form method="POST" id="table-form">
-      <label>表示する表を選択:
+      <label>出力データの選択:
         <select name="selected_table" required>
           <option value="">-- 選択してください --</option>
           {% for option in table_options %}
@@ -74,10 +75,14 @@
       <input type="hidden" name="var_c" value="{{ selected_code }}">
       <button type="submit" name="action" value="show_table">表を表示</button>
     </form>
+    <p>S1～S48：児童生徒ごとのデータ</p>
+    <p>教師：教師データ</p>
+    <p>C1～C12：観察カテゴリデータ</p>
+    <p>summary：全観察カテゴリ集計</p>
   {% endif %}
 
   {% if observation_table is not none %}
-    <h2>選択されたデータの表示</h2>
+    <h2>出力データの表示</h2>
     <table border="1">
       <thead>
         <tr>
@@ -96,7 +101,7 @@
         {% endfor %}
       </tbody>
     </table>
-
+    <h2>出力データのダウンロード</h2>
     <form method="GET" action="/download/xlsx">
       <button type="submit">Excel形式でダウンロード</button>
     </form>
