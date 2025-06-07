@@ -15,6 +15,7 @@ app.secret_key = 'your_secret_key'
 
 BASE_URL = "http://orutchi.educpsychol.com/data/"
 observation_table_global = None
+detail_data_global = []
 
 def read_csv_with_encoding_auto(response_content):
     result = chardet.detect(response_content)
@@ -86,7 +87,7 @@ def index():
     if not session.get('authenticated'):
         return redirect(url_for('login'))
 
-    global observation_table_global
+    global observation_table_global, detail_data_global
     df = None
     filtered_df = None
     error = None
@@ -148,8 +149,8 @@ def index():
                     detail_response.raise_for_status()
                     detail_df = read_csv_with_encoding_auto(detail_response.content)
                     detail_data = [f"C{i+1}: {detail_df.iloc[i, 0]}" for i in range(min(12, len(detail_df)))]
+                    detail_data_global = detail_data
                     grid_data, empty_list, absent_list, no_obs_list = create_display_grid(filtered_df)
-
                     valid_numbers = []
                     for i in range(1, 49):
                         if str(i) not in empty_list + absent_list + no_obs_list:
@@ -261,7 +262,7 @@ import base64
 
 @app.route("/download/html")
 def download_html():
-    global observation_table_global
+    global observation_table_global, detail_data_global
     if observation_table_global is None:
         return "No data to download"
 
@@ -279,7 +280,16 @@ def download_html():
     # HTMLとして表を文字列で生成
     table_html = observation_table_global.to_html(index=False)
 
-    # HTML全文を構築（base64画像を埋め込む）
+    # 観察カテゴリ一覧をHTMLリストに変換（detail_data_globalは文字列リストと想定）
+    if detail_data_global:
+        detail_html = "<h4>観察カテゴリ一覧</h4><ul>"
+        for item in detail_data_global:
+            detail_html += f"<li>{item}</li>"
+        detail_html += "</ul>"
+    else:
+        detail_html = ""
+
+    # HTML全文を構築（base64画像を埋め込み、カテゴリ一覧も追加）
     full_html = f"""<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -289,6 +299,8 @@ def download_html():
 <body>
   <img src="data:image/png;base64,{encoded_image}" alt="ロゴ画像" style="width:200px;"><br><br>
   {table_html}
+  <br>
+  {detail_html}
 </body>
 </html>
 """
@@ -299,6 +311,5 @@ def download_html():
         tmp_path = tmp.name
 
     return send_file(tmp_path, as_attachment=True, download_name=filename)
-
 #if __name__ == "__main__":
 #    app.run(debug=True)
