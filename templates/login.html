@@ -67,6 +67,9 @@
       </label>
       <button type="submit">ログイン</button>
     </form>
+<div style="margin-top: 10px;">
+  <img src="{{ url_for('static', filename='ORUTCHI_logo.png') }}" alt="Login Image" style="max-width: 100%; height: auto;">
+</div>
     {% if error %}
       <p class="error-message">{{ error }}</p>
     {% endif %}
