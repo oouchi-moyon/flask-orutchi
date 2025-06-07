@@ -257,21 +257,48 @@ def download_xlsx():
         observation_table_global.to_excel(tmp.name, index=False)
         return send_file(tmp.name, as_attachment=True, download_name=filename)
 
+import base64
+
 @app.route("/download/html")
 def download_html():
     global observation_table_global
     if observation_table_global is None:
         return "No data to download"
+
     ver_a = session.get('ver_a', 'unknown')
     ver_b = session.get('ver_b', 'unknown')
     ver_c = session.get('ver_c', 'unknown')
     selected_table = session.get('selected_table', 'unknown')
     filename = f"table_{ver_a}_{ver_b}_{ver_c}_{selected_table}.html"
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp:
-        observation_table_global.to_html(tmp.name, index=False)
-        return send_file(tmp.name, as_attachment=True, download_name=filename)
+    # base64で画像データを読み込む
+    image_path = os.path.join("static", "ORUTCHI_logo.png")
+    with open(image_path, "rb") as img_file:
+        encoded_image = base64.b64encode(img_file.read()).decode('utf-8')
 
+    # HTMLとして表を文字列で生成
+    table_html = observation_table_global.to_html(index=False)
+
+    # HTML全文を構築（base64画像を埋め込む）
+    full_html = f"""<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>観察データ出力</title>
+</head>
+<body>
+  <img src="data:image/png;base64,{encoded_image}" alt="ロゴ画像" style="width:200px;"><br><br>
+  {table_html}
+</body>
+</html>
+"""
+
+    # 一時HTMLファイルを作成して送信
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".html", mode='w', encoding='utf-8') as tmp:
+        tmp.write(full_html)
+        tmp_path = tmp.name
+
+    return send_file(tmp_path, as_attachment=True, download_name=filename)
 
 #if __name__ == "__main__":
 #    app.run(debug=True)
