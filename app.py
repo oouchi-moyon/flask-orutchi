@@ -68,7 +68,12 @@ def login():
         password = request.form.get("password", "").strip()
 
         try:
-            df_check = pd.read_csv(BASE_URL + "check.csv", dtype=str)
+            df_check = pd.read_csv(BASE_URL + "check.csv", dtype=str, encoding='utf-8-sig')
+
+            # 空白除去（念のため）
+            df_check.iloc[:, 0] = df_check.iloc[:, 0].str.strip()
+            df_check.iloc[:, 1] = df_check.iloc[:, 1].str.strip()
+
         except Exception as e:
             error = f"認証データの読み込みに失敗しました: {e}"
             return render_template('login.html', error=error)
