@@ -28,12 +28,12 @@ table.fixed-seat td {
 </p>
 	<h4>観察者IDと観察年月日の入力</h4>
   <form method="POST">
-    <label>観察者ID: <input type="text" name="var_a" value="{{ var_a }}" required></label><br>
-    <label>観察年月日（YYYYMMDD）: <input type="text" name="var_b" value="{{ var_b }}" required></label><br>
+    <label>観察者ID: <br><input type="text" name="var_a" value="{{ var_a }}" required></label><br>
+    <label>観察年月日（YYYYMMDD）: <br><input type="text" name="var_b" value="{{ var_b }}" required></label><br>
     <button type="submit" name="action" value="search">次へ</button><br><br>
 
     {% if course_codes %}
-		<h4>授業コード選択</h4><br>
+		<h4>授業コード選択</h4>
       <label>授業コード:
         <select name="var_c">
           <option value="">-- 選択してください --</option>
