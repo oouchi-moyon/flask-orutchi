@@ -54,9 +54,6 @@
       {% endfor %}
     </table>
     <p style="color:red;">赤字は観察データなし</p>
-<!--    <h3>空席: {{ empty_list | join(", ") }}</h3>-->
-<!--    <h3>欠席: {{ absent_list | join(", ") }}</h3>-->
-<!--    <h3>観察データなし: {{ no_obs_list | join(", ") }}</h3>-->
   {% endif %}
 
   {% if table_options %}
@@ -104,6 +101,5 @@
       <button type="submit">HTML形式でダウンロード</button>
     </form>
   {% endif %}
-
 </body>
 </html>

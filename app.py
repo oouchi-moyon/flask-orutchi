@@ -1,21 +1,160 @@
-from flask import Flask, render_template, request, send_file
+from flask import Flask, render_template, request, redirect, url_for, session
+import pandas as pd
+
+app = Flask(__name__)
+app.secret_key = 'your_secret_key'
+
+BASE_URL = "http://orutchi.educpsychol.com/data/"
+
+@app.route('/', methods=['GET', 'POST'])
+def login():
+    error = None
+    if request.method == 'POST':
+        user_id = request.form['user_id']
+        password = request.form['password']
+
+        try:
+            df_check = pd.read_csv(BASE_URL + "check.csv", dtype=str)
+        except Exception as e:
+            error = f"認証データの読み込みに失敗しました: {e}"
+            return render_template('login.html', error=error)
+
+        if ((df_check.iloc[:, 0] == user_id) & (df_check.iloc[:, 1] == password)).any():
+            session['authenticated'] = True
+            return redirect(url_for('index'))
+        else:
+            error = 'IDまたはパスワードが正しくありません。'
+            return render_template('login.html', error=error)
+
+    return render_template('login.html', error=error)
+
+@app.route('/index', methods=['GET', 'POST'])
+def index():
+    if not session.get('authenticated'):
+        return redirect(url_for('login'))
+
+    var_a = var_b = var_c = selected_table = ""
+    course_codes = []
+    selected_code = ""
+    detail_data = []
+    grid_data = []
+    observation_table = None
+    table_options = []
+    message = ""
+    error = ""
+
+    if request.method == 'POST':
+        action = request.form.get("action")
+        var_a = request.form.get("var_a", "")
+        var_b = request.form.get("var_b", "")
+        var_c = request.form.get("var_c", "")
+        selected_code = var_c
+        selected_table = request.form.get("selected_table", "")
+
+        try:
+            filename = f"{BASE_URL}{var_a}_{var_b}.csv"
+            df = pd.read_csv(filename, header=None)
+
+            if action == "search":
+                course_codes = df.iloc[:, 4].dropna().unique().tolist()
+                message = f"{len(course_codes)} 件の授業コードが見つかりました。"
+
+            elif action == "select":
+                df_selected = df[df.iloc[:, 4] == var_c]
+                first_value = df_selected.iloc[0, 2]
+                sub_filename = f"{BASE_URL}{first_value}.csv"
+                df_detail = pd.read_csv(sub_filename, header=None)
+                detail_data = [f"C{i+1}:{df_detail.iloc[i, 0]}" for i in range(12)]
+
+                # グリッド（座席）作成
+                grid_data = []
+                for i in range(7):
+                    row = []
+                    for j in range(7):
+                        index = i * 7 + j + 1
+                        if index > 49:
+                            row.append({"text": "", "style": ""})
+                            continue
+                        value = df_selected.iloc[0, index + 11]
+                        style = ""
+                        if pd.isna(value) or value == "":
+                            style = "color:red;"
+                            text = "－"
+                        else:
+                            text = value
+                        row.append({"text": text, "style": style})
+                    grid_data.append(row)
+
+                # 表選択肢の用意
+                table_options = df_selected.columns[12:].astype(str).tolist()
+
+            elif action == "show_table":
+                df_selected = df[df.iloc[:, 4] == var_c]
+                selected_col_index = df_selected.columns.get_loc(selected_table)
+                observation_table = df_selected.iloc[:, [0, 1, 4, selected_col_index]]
+
+                # 表示名を変更
+                observation_table.columns = ["観察者ID", "観察日", "授業コード", "観察内容"]
+
+        except Exception as e:
+            error = f"エラーが発生しました: {e}"
+
+    return render_template('index.html',
+                           var_a=var_a,
+                           var_b=var_b,
+                           course_codes=course_codes,
+                           selected_code=selected_code,
+                           detail_data=detail_data,
+                           grid_data=grid_data,
+                           table_options=table_options,
+                           selected_table=selected_table,
+                           observation_table=observation_table,
+                           message=message,
+                           error=error)
+
+@app.route('/download/xlsx')
+def download_xlsx():
+    # 実装例（必要に応じて実装してください）
+    return "xlsxダウンロード機能は未実装です。"
+
+@app.route('/download/html')
+def download_html():
+    # 実装例（必要に応じて実装してください）
+    return "htmlダウンロード機能は未実装です。"
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+from flask import Flask, render_template, request, redirect, url_for, send_file, session
 import pandas as pd
 import requests
 from io import BytesIO, StringIO
 import chardet
 import tempfile
-import os
 
 app = Flask(__name__)
+app.secret_key = "your_secret_key"  # セッション保護のため必要（今回は簡易利用）
+
 BASE_URL = "http://orutchi.educpsychol.com/data"
 observation_table_global = None
-
 
 def read_csv_with_encoding_auto(response_content):
     result = chardet.detect(response_content)
     encoding = result['encoding']
     return pd.read_csv(StringIO(response_content.decode(encoding)), header=None)
-
 
 def create_display_grid(df):
     grid = []
@@ -56,7 +195,32 @@ def create_display_grid(df):
 
 
 @app.route("/", methods=["GET", "POST"])
+def login():
+    error = None
+    if request.method == "POST":
+        input_id = request.form.get("user_id", "")
+        input_pw = request.form.get("password", "")
+        try:
+            response = requests.get(f"{BASE_URL}/check.csv")
+            response.raise_for_status()
+            df = read_csv_with_encoding_auto(response.content)
+            matched = df[(df[0] == input_id) & (df[1] == input_pw)]
+            if not matched.empty:
+                session["authenticated"] = True
+                return redirect(url_for("index"))
+            else:
+                error = "IDまたはパスワードが間違っています。"
+        except Exception as e:
+            error = f"認証時にエラーが発生しました: {e}"
+
+    return render_template("login.html", error=error)
+
+
+@app.route("/main", methods=["GET", "POST"])
 def index():
+    if not session.get("authenticated"):
+        return redirect(url_for("login"))
+
     global observation_table_global
     df = None
     filtered_df = None
@@ -227,6 +391,4 @@ def download_html():
         observation_table_global.to_html(tmp.name, index=False)
         return send_file(tmp.name, as_attachment=True, download_name="table.html")
 
-
-#if __name__ == "__main__":
 #    app.run(debug=True)
