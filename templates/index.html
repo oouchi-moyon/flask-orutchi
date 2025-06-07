@@ -54,10 +54,13 @@
       {% endfor %}
     </table>
     <p style="color:red;">赤字は観察データなし</p>
+<!--    <h3>空席: {{ empty_list | join(", ") }}</h3>-->
+<!--    <h3>欠席: {{ absent_list | join(", ") }}</h3>-->
+<!--    <h3>観察データなし: {{ no_obs_list | join(", ") }}</h3>-->
   {% endif %}
 
   {% if table_options %}
-    <form method="POST">
+    <form method="POST" id="table-form">
       <label>表示する表を選択:
         <select name="selected_table" required>
           <option value="">-- 選択してください --</option>
@@ -101,5 +104,6 @@
       <button type="submit">HTML形式でダウンロード</button>
     </form>
   {% endif %}
+
 </body>
 </html>
