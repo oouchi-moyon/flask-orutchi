@@ -9,14 +9,14 @@
   <img src="https://lab.educpsychol.com/wp-content/uploads/2025/06/ORUCHI_Logo.png" alt="アイコン" style="width:150px; vertical-align:middle; margin-right:10px;">
   授業観察データ出力
 </p>
+	<h2>観察者IDと観察年月日の入力</h2?
   <form method="POST">
-	<h2>１．観察者IDと観察年月日の入力</h2?
     <label>観察者ID: <input type="text" name="var_a" value="{{ var_a }}" required></label><br>
     <label>観察年月日（YYYYMMDD）: <input type="text" name="var_b" value="{{ var_b }}" required></label><br>
     <button type="submit" name="action" value="search">次へ</button><br><br>
 
     {% if course_codes %}
-		<h2>２．授業コード選択</h2>
+		<h2>授業コード選択</h2><br>
       <label>授業コード:
         <select name="var_c">
           <option value="">-- 選択してください --</option>
