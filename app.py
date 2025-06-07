@@ -58,9 +58,9 @@ def create_display_grid(df):
 @app.route('/', methods=['GET', 'POST'])
 def login():
     error = None
-    if request.method == 'POST':
-        user_id = request.form['user_id']
-        password = request.form['password']
+    if request.method == "POST" and 'user_id' in request.form and 'password' in request.form:
+        user_id = request.form.get("user_id", "").strip()
+        password = request.form.get("password", "").strip()
 
         try:
             df_check = pd.read_csv(BASE_URL + "check.csv", dtype=str)
@@ -250,7 +250,6 @@ def download_html():
     with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp:
         observation_table_global.to_html(tmp.name, index=False)
         return send_file(tmp.name, as_attachment=True, download_name="table.html")
-
 
 #if __name__ == "__main__":
 #    app.run(debug=True)
