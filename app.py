@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, send_file
 import pandas as pd
 import requests
 from io import BytesIO, StringIO
@@ -240,19 +240,15 @@ def index():
 def download_xlsx():
     global observation_table_global
     if observation_table_global is None:
-        return "No data to download", 400
+        return "No data to download", 400  # ← ステータスコード付きで明示的に返す
 
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        observation_table_global.to_excel(writer, index=False)
-    output.seek(0)
-
-    return send_file(
-        output,
-        as_attachment=True,
-        download_name="table.xlsx",
-        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+    try:
+        # 一時ファイルを手動で管理して削除しないようにする
+        temp_path = os.path.join(tempfile.gettempdir(), "observation_table.xlsx")
+        observation_table_global.to_excel(temp_path, index=False)
+        return send_file(temp_path, as_attachment=True, download_name="table.xlsx")
+    except Exception as e:
+        return f"エラーが発生しました: {str(e)}", 500
 
 @app.route("/download/html")
 def download_html():
