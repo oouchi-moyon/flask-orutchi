@@ -8,8 +8,8 @@
   <h1>CSVファイル検索</h1>
 
   <form method="POST">
-    <label>変数A: <input type="text" name="var_a" value="{{ var_a }}" required></label><br>
-    <label>変数B: <input type="text" name="var_b" value="{{ var_b }}" required></label><br>
+    <label>観察者ID: <input type="text" name="var_a" value="{{ var_a }}" required></label><br>
+    <label>観察日（8桁の数値）: <input type="text" name="var_b" value="{{ var_b }}" required></label><br>
     <button type="submit" name="action" value="search">検索</button><br><br>
 
     {% if course_codes %}
@@ -54,9 +54,9 @@
       {% endfor %}
     </table>
     <p style="color:red;">赤字は観察データなし</p>
-    <h3>空席: {{ empty_list | join(", ") }}</h3>
-    <h3>欠席: {{ absent_list | join(", ") }}</h3>
-    <h3>観察データなし: {{ no_obs_list | join(", ") }}</h3>
+<!--    <h3>空席: {{ empty_list | join(", ") }}</h3>-->
+<!--    <h3>欠席: {{ absent_list | join(", ") }}</h3>-->
+<!--    <h3>観察データなし: {{ no_obs_list | join(", ") }}</h3>-->
   {% endif %}
 
   {% if table_options %}
