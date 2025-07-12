@@ -250,7 +250,9 @@ def index():
 
 @app.route("/download/xlsx")
 def download_xlsx():
+    print("✅ /download/xlsx に入りました")
     global observation_table_global
+    print("📊 observation_table_global の中身:", observation_table_global)
     if observation_table_global is None:
         return "No data to download"
     ver_a = session.get('ver_a', 'unknown')
