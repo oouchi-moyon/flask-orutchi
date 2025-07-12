@@ -5,6 +5,7 @@ from io import BytesIO, StringIO
 import chardet
 import tempfile
 import os
+import base64
 
 app = Flask(__name__)
 
@@ -37,8 +38,8 @@ def create_display_grid(df):
             if num > 49:
                 row.append({"text": "", "style": ""})
                 continue
-
-            col_index = num + 10
+            col_index = num + 10 
+            
             if col_index >= total_cols:
                 row.append({"text": "", "style": ""})
                 continue
@@ -168,7 +169,7 @@ def index():
                     if action == "show_table" and selected_table:
                         if selected_table.startswith("S") or selected_table == "教師":
                             seat_number = 49 if selected_table == "教師" else int(selected_table[1:])
-                            col_index = 10 + seat_number
+                            col_index = 10 + seat_number 
                             display_rows = filtered_df.iloc[:, [5, 6, col_index] + list(range(60, 72))].copy()
                             label = "教師" if selected_table == "教師" else selected_table
                             display_rows.columns = ["観察開始時刻", "観察終了時刻", label] + [f"C{i}" for i in range(1, 13)]
@@ -191,10 +192,16 @@ def index():
 
                         elif selected_table.startswith("C"):
                             c_index = 60 + int(selected_table[1:]) - 1
-                            seat_cols = [10 + int(i) for i in range(49) if str(i+1) not in empty_list + absent_list + no_obs_list]
+                            seat_cols = []
+                            seat_labels = []
+                            for i in range(1, 50): # S1からS49（教師）まで
+                                current_seat_label = "教師" if i == 49 else f"S{i}"
+                                if str(i) not in empty_list + absent_list + no_obs_list:
+                                    seat_cols.append(10 + i) # S1なら11, 教師なら59
+                                    seat_labels.append(current_seat_label)
+
                             display_cols = [5, 6, c_index] + seat_cols
                             display_rows = filtered_df.iloc[:, display_cols].copy()
-                            seat_labels = ["教師" if i == 48 else f"S{i+1}" for i in range(49) if str(i+1) not in empty_list + absent_list + no_obs_list]
                             display_rows.columns = ["観察開始時刻", "観察終了時刻", selected_table] + seat_labels
 
                             for s in seat_labels:
@@ -264,8 +271,6 @@ def download_xlsx():
         observation_table_global.to_excel(tmp.name, index=False)
         return send_file(tmp.name, as_attachment=True, download_name=filename)
 
-import base64
-
 @app.route("/download/html")
 def download_html():
     global observation_table_global, detail_data_global
@@ -278,15 +283,12 @@ def download_html():
     selected_table = session.get('selected_table', 'unknown')
     filename = f"table_{ver_a}_{ver_b}_{ver_c}_{selected_table}.html"
 
-    # base64で画像データを読み込む
     image_path = os.path.join("static", "ORUTCHI_logo.png")
     with open(image_path, "rb") as img_file:
         encoded_image = base64.b64encode(img_file.read()).decode('utf-8')
 
-    # HTMLとして表を文字列で生成
     table_html = observation_table_global.to_html(index=False)
 
-    # 観察カテゴリ一覧をHTMLリストに変換（detail_data_globalは文字列リストと想定）
     if detail_data_global:
         detail_html = "<h4>観察カテゴリ一覧</h4><ul>"
         for item in detail_data_global:
@@ -295,7 +297,6 @@ def download_html():
     else:
         detail_html = ""
 
-    # HTML全文を構築（base64画像を埋め込み、カテゴリ一覧も追加）
     full_html = f"""<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -311,11 +312,8 @@ def download_html():
 </html>
 """
 
-    # 一時HTMLファイルを作成して送信
     with tempfile.NamedTemporaryFile(delete=False, suffix=".html", mode='w', encoding='utf-8') as tmp:
         tmp.write(full_html)
         tmp_path = tmp.name
 
     return send_file(tmp_path, as_attachment=True, download_name=filename)
-#if __name__ == "__main__":
-#    app.run(debug=True)
