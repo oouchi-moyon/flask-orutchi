@@ -37,9 +37,7 @@ def create_display_grid(df):
             if num > 49:
                 row.append({"text": "", "style": ""})
                 continue
-            if num == 49:
-                row.append({"text": "教師", "style": ""})
-                continue
+
             col_index = num + 10
             if col_index >= total_cols:
                 row.append({"text": "", "style": ""})
@@ -55,7 +53,10 @@ def create_display_grid(df):
                 no_obs_list.append(str(num))
                 row.append({"text": str(num), "style": "color:red;"})
             else:
-                row.append({"text": str(num), "style": ""})
+                if num == 49:
+                    row.append({"text": "教師", "style": ""})
+                else:
+                    row.append({"text": str(num), "style": ""})
         grid.append(row)
 
     return grid, empty_list, absent_list, no_obs_list
