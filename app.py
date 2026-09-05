@@ -131,6 +131,7 @@ def index():
                 response.raise_for_status()
                 df = read_csv_with_encoding_auto(response.content)
                 message = f"{filename} が見つかりました。"
+                df.iloc[:, 4] = df.iloc[:, 4].astype(str).str.strip()
                 course_codes = df.iloc[:, 4].dropna().unique().tolist()
             except Exception as e:
                 error = f"エラー: {e}"
@@ -142,6 +143,7 @@ def index():
                 response = requests.get(file_url)
                 response.raise_for_status()
                 df = read_csv_with_encoding_auto(response.content)
+                df.iloc[:, 4] = df.iloc[:, 4].astype(str).str.strip()
                 course_codes = df.iloc[:, 4].dropna().unique().tolist()
                 filtered_df = df[df.iloc[:, 4] == selected_code]
 
